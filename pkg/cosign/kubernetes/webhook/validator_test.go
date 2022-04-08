@@ -30,8 +30,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
-	internalcip "github.com/sigstore/cosign/internal/pkg/apis/cosigned"
 	"github.com/sigstore/cosign/pkg/apis/config"
+	publiccip "github.com/sigstore/cosign/pkg/apis/cosigned/clusterimagepolicy"
 	"github.com/sigstore/cosign/pkg/apis/cosigned/v1alpha1"
 	"github.com/sigstore/cosign/pkg/cosign"
 	"github.com/sigstore/cosign/pkg/oci"
@@ -231,14 +231,14 @@ UoJou2P8sbDxpLiE/v3yLw1/jyOrCPWYHWFXnyyeGlkgSVefG54tNoK7Uw==
 		customContext: config.ToContext(context.Background(),
 			&config.Config{
 				ImagePolicyConfig: &config.ImagePolicyConfig{
-					Policies: map[string]internalcip.ClusterImagePolicy{
+					Policies: map[string]publiccip.ClusterImagePolicy{
 						"cluster-image-policy": {
 							Images: []v1alpha1.ImagePattern{{
 								Regex: ".*",
 							}},
-							Authorities: []internalcip.Authority{
+							Authorities: []publiccip.Authority{
 								{
-									Key: &internalcip.KeyRef{
+									Key: &publiccip.KeyRef{
 										Data:       authorityKeyCosignPubString,
 										PublicKeys: []*ecdsa.PublicKey{authorityKeyCosignPub},
 									},
@@ -265,12 +265,12 @@ UoJou2P8sbDxpLiE/v3yLw1/jyOrCPWYHWFXnyyeGlkgSVefG54tNoK7Uw==
 		customContext: config.ToContext(context.Background(),
 			&config.Config{
 				ImagePolicyConfig: &config.ImagePolicyConfig{
-					Policies: map[string]internalcip.ClusterImagePolicy{
+					Policies: map[string]publiccip.ClusterImagePolicy{
 						"cluster-image-policy-keyless": {
 							Images: []v1alpha1.ImagePattern{{
 								Regex: ".*",
 							}},
-							Authorities: []internalcip.Authority{
+							Authorities: []publiccip.Authority{
 								{
 									Keyless: &v1alpha1.KeylessRef{
 										URL: badURL,
@@ -308,12 +308,12 @@ UoJou2P8sbDxpLiE/v3yLw1/jyOrCPWYHWFXnyyeGlkgSVefG54tNoK7Uw==
 		customContext: config.ToContext(context.Background(),
 			&config.Config{
 				ImagePolicyConfig: &config.ImagePolicyConfig{
-					Policies: map[string]internalcip.ClusterImagePolicy{
+					Policies: map[string]publiccip.ClusterImagePolicy{
 						"cluster-image-policy-keyless": {
 							Images: []v1alpha1.ImagePattern{{
 								Regex: ".*",
 							}},
-							Authorities: []internalcip.Authority{
+							Authorities: []publiccip.Authority{
 								{
 									Keyless: &v1alpha1.KeylessRef{
 										URL: fulcioURL,
@@ -351,12 +351,12 @@ UoJou2P8sbDxpLiE/v3yLw1/jyOrCPWYHWFXnyyeGlkgSVefG54tNoK7Uw==
 		customContext: config.ToContext(context.Background(),
 			&config.Config{
 				ImagePolicyConfig: &config.ImagePolicyConfig{
-					Policies: map[string]internalcip.ClusterImagePolicy{
+					Policies: map[string]publiccip.ClusterImagePolicy{
 						"cluster-image-policy-keyless": {
 							Images: []v1alpha1.ImagePattern{{
 								Regex: ".*",
 							}},
-							Authorities: []internalcip.Authority{
+							Authorities: []publiccip.Authority{
 								{
 									Keyless: &v1alpha1.KeylessRef{
 										URL: fulcioURL,
