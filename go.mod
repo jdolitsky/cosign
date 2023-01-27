@@ -265,4 +265,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/google/go-containerregistry => github.com/jdolitsky/go-containerregistry v0.5.2-0.20230125235152-aca940d8abe4
+replace github.com/google/go-containerregistry => github.com/jdolitsky/go-containerregistry v0.5.2-0.20230127221545-b11169d73a1e

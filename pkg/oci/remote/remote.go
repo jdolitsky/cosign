@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -160,47 +159,11 @@ func attachment(digestable digestable, attName string, o *options) (oci.File, er
 
 	artifactType := ArtifactType(attName)
 	filter := map[string]string{types.OCIFilterArtifactType: artifactType}
-
-	results := []v1.Descriptor{}
-	var index *v1.IndexManifest
-	var next *remote.ReferrersNextPage
-	for {
-		if index == nil {
-			index, next, err = remote.Referrers(d, remote.WithFilter(filter))
-		} else {
-			index, next, err = next.Referrers()
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		// Check if the filter was successfully applied,
-		// otherwise we gotta filter it ourselves
-		filterApplied := false
-		if index.Annotations != nil {
-			if raw, ok := index.Annotations[types.OCIAnnotationFiltersApplied]; ok {
-				for _, v := range strings.Split(raw, ",") {
-					if v == types.OCIFilterArtifactType {
-						filterApplied = true
-						break
-					}
-				}
-			}
-		}
-		if filterApplied {
-			results = append(results, index.Manifests...)
-		} else {
-			for _, desc := range index.Manifests {
-				if desc.ArtifactType == artifactType {
-					results = append(results, desc)
-				}
-			}
-		}
-
-		if next == nil {
-			break
-		}
+	index, err := remote.Referrers(d, remote.WithFilter(filter))
+	if err != nil {
+		return nil, err
 	}
+	results := index.Manifests
 
 	numResults := len(results)
 	if numResults == 0 {
