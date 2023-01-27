@@ -16,7 +16,6 @@
 package remote
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -192,14 +191,17 @@ func attachment(digestable digestable, attName string, o *options) (oci.File, er
 		}
 	}
 
-	b, err := json.MarshalIndent(results, "", "  ")
-	if err != nil {
-		return nil, err
+	numResults := len(results)
+	if len(results) == 0 {
+		return nil, fmt.Errorf("unable to locate reference with artifactType %s", artifactType)
 	}
-	fmt.Println(string(b))
-	panic(fmt.Sprintf("i be panickin, attName: %s", attName))
+	// TODO: if there is more than 1 result.. what does that even mean?
+	lastResult := results[numResults-1]
 
-	img, err := SignedImage(o.TargetRepository.Tag(normalize(h, o.TagPrefix, attName)), o.OriginalOptions...)
+	// TODO: support fallback to original tag scheme
+	//img, err := SignedImage(o.TargetRepository.Tag(normalize(h, o.TagPrefix, attName)), o.OriginalOptions...)
+
+	img, err := SignedImage(o.TargetRepository.Digest(lastResult.Digest.String()), o.OriginalOptions...)
 	if err != nil {
 		return nil, err
 	}
