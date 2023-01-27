@@ -159,43 +159,55 @@ func attachment(digestable digestable, attName string, o *options) (oci.File, er
 		artifactType = "application/vnd.sigstore.cosign.signature.v1"
 	}
 
-	// TODO: support next page
 	filter := map[string]string{types.OCIFilterArtifactType: artifactType}
-	index, _, err := remote.Referrers(d, remote.WithFilter(filter))
-	if err != nil {
-		return nil, err
-	}
+	results := []v1.Descriptor{}
+	var index *v1.IndexManifest
+	var next *remote.ReferrersNextPage
+	for {
+		if index == nil {
+			index, next, err = remote.Referrers(d, remote.WithFilter(filter))
+		} else {
+			index, next, err = next.Referrers()
+		}
+		if err != nil {
+			return nil, err
+		}
 
-	// Check if the filter was successfully applied,
-	// otherwise we gotta filter it ourselves
-	filterApplied := false
-	if index.Annotations != nil {
-		if raw, ok := index.Annotations[types.OCIAnnotationFiltersApplied]; ok {
-			for _, v := range strings.Split(raw, ",") {
-				if v == types.OCIFilterArtifactType {
-					filterApplied = true
-					break
+		// Check if the filter was successfully applied,
+		// otherwise we gotta filter it ourselves
+		filterApplied := false
+		if index.Annotations != nil {
+			if raw, ok := index.Annotations[types.OCIAnnotationFiltersApplied]; ok {
+				for _, v := range strings.Split(raw, ",") {
+					if v == types.OCIFilterArtifactType {
+						filterApplied = true
+						break
+					}
 				}
 			}
 		}
-	}
-	var results []v1.Descriptor
-	if filterApplied {
-		results = index.Manifests
-	} else {
-		results = []v1.Descriptor{}
-		for _, desc := range index.Manifests {
-			if desc.ArtifactType == artifactType {
-				results = append(results, desc)
+		if filterApplied {
+			results = append(results, index.Manifests...)
+		} else {
+			for _, desc := range index.Manifests {
+				if desc.ArtifactType == artifactType {
+					results = append(results, desc)
+				}
 			}
+		}
+
+		if next == nil {
+			break
 		}
 	}
 
 	numResults := len(results)
-	if len(results) == 0 {
+	if numResults == 0 {
 		return nil, fmt.Errorf("unable to locate reference with artifactType %s", artifactType)
+	} else if numResults > 1 {
+		// TODO: if there is more than 1 result.. what does that even mean?
+		fmt.Printf("WARNING: there were a total of %d references with artifactType %s\n", numResults, artifactType)
 	}
-	// TODO: if there is more than 1 result.. what does that even mean?
 	lastResult := results[numResults-1]
 
 	// TODO: support fallback to original tag scheme
