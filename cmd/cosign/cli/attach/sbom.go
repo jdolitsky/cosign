@@ -20,20 +20,55 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/types"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
+	ocistatic "github.com/google/go-containerregistry/pkg/v1/static"
+	ocitypes "github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
-	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
-	"github.com/sigstore/cosign/v2/pkg/oci/static"
+	"github.com/sigstore/cosign/v2/pkg/types"
 )
 
-func SBOMCmd(ctx context.Context, regOpts options.RegistryOptions, sbomRef string, sbomType types.MediaType, imageRef string) error {
+func SBOMCmd(ctx context.Context, regOpts options.RegistryOptions, sbomRef string, sbomType ocitypes.MediaType, imageRef string) error {
+	var dig name.Digest
 	ref, err := name.ParseReference(imageRef, regOpts.NameOptions()...)
 	if err != nil {
+		return err
+	}
+	if digr, ok := ref.(name.Digest); ok {
+		dig = digr
+	} else {
+		desc, err := remote.Head(ref, regOpts.GetRegistryClientOpts(ctx)...)
+		if err != nil {
+			return err
+		}
+		dig = ref.Context().Digest(desc.Digest.String())
+	}
+
+	desc, err := remote.Head(dig, regOpts.GetRegistryClientOpts(ctx)...)
+	var terr *transport.Error
+	if errors.As(err, &terr) && terr.StatusCode == http.StatusNotFound {
+		h, err := v1.NewHash(dig.DigestStr())
+		if err != nil {
+			return err
+		}
+		// The subject doesn't exist, attach to it as if it's an empty OCI image.
+		logs.Progress.Println("subject doesn't exist, attaching to empty image")
+		desc = &v1.Descriptor{
+			ArtifactType: types.CosignArtifactSBOMMediaType,
+			MediaType:    ocitypes.OCIManifestSchema1,
+			Size:         0,
+			Digest:       h,
+		}
+	} else if err != nil {
 		return err
 	}
 
@@ -42,22 +77,22 @@ func SBOMCmd(ctx context.Context, regOpts options.RegistryOptions, sbomRef strin
 		return err
 	}
 
-	remoteOpts, err := regOpts.ClientOpts(ctx)
+	empty := mutate.MediaType(
+		mutate.ConfigMediaType(empty.Image, ocitypes.MediaType(types.CosignArtifactSBOMMediaType)),
+		ocitypes.OCIManifestSchema1)
+	att, err := mutate.AppendLayers(empty, ocistatic.NewLayer(b, ocitypes.MediaType(sbomType)))
 	if err != nil {
 		return err
 	}
-
-	dstRef, err := ociremote.SBOMTag(ref, remoteOpts...)
+	att = mutate.Subject(att, *desc).(v1.Image)
+	attdig, err := att.Digest()
 	if err != nil {
 		return err
 	}
+	dstRef := ref.Context().Digest(attdig.String())
 
 	fmt.Fprintf(os.Stderr, "Uploading SBOM file for [%s] to [%s] with mediaType [%s].\n", ref.Name(), dstRef.Name(), sbomType)
-	img, err := static.NewFile(b, static.WithLayerMediaType(sbomType))
-	if err != nil {
-		return err
-	}
-	return remote.Write(dstRef, img, regOpts.GetRegistryClientOpts(ctx)...)
+	return remote.Write(dstRef, att, regOpts.GetRegistryClientOpts(ctx)...)
 }
 
 func sbomBytes(sbomRef string) ([]byte, error) {

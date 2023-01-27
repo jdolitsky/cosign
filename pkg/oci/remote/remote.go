@@ -105,6 +105,11 @@ func SBOMTag(ref name.Reference, opts ...Option) (name.Tag, error) {
 	return suffixTag(ref, o.SBOMSuffix, o)
 }
 
+// ArtifactType converts a attachment name (sig/sbom/att/etc.) into a valid artifactType (OCI 1.1+).
+func ArtifactType(attName string) string {
+	return fmt.Sprintf("application/vnd.dev.cosign.artifact.%s.v1+json", attName)
+}
+
 func suffixTag(ref name.Reference, suffix string, o *options) (name.Tag, error) {
 	var h v1.Hash
 	if digest, ok := ref.(name.Digest); ok {
@@ -153,13 +158,9 @@ func attachment(digestable digestable, attName string, o *options) (oci.File, er
 	}
 	d := o.TargetRepository.Digest(h.String())
 
-	// TODO: this should be determinable from attName... better
-	artifactType := fmt.Sprintf("application/vnd.sigstore.cosign.%s.v1", attName)
-	if attName == "sig" {
-		artifactType = "application/vnd.sigstore.cosign.signature.v1"
-	}
-
+	artifactType := ArtifactType(attName)
 	filter := map[string]string{types.OCIFilterArtifactType: artifactType}
+
 	results := []v1.Descriptor{}
 	var index *v1.IndexManifest
 	var next *remote.ReferrersNextPage
