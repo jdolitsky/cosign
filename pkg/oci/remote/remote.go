@@ -16,10 +16,12 @@
 package remote
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -150,6 +152,53 @@ func attachment(digestable digestable, attName string, o *options) (oci.File, er
 	if err != nil {
 		return nil, err
 	}
+	d := o.TargetRepository.Digest(h.String())
+
+	// TODO: this should be determinable from attName... better
+	artifactType := fmt.Sprintf("application/vnd.sigstore.cosign.%s.v1", attName)
+	if attName == "sig" {
+		artifactType = "application/vnd.sigstore.cosign.signature.v1"
+	}
+
+	// TODO: support next page
+	filter := map[string]string{types.OCIFilterArtifactType: artifactType}
+	index, _, err := remote.Referrers(d, remote.WithFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if the filter was successfully applied,
+	// otherwise we gotta filter it ourselves
+	filterApplied := false
+	if index.Annotations != nil {
+		if raw, ok := index.Annotations[types.OCIAnnotationFiltersApplied]; ok {
+			for _, v := range strings.Split(raw, ",") {
+				if v == types.OCIFilterArtifactType {
+					filterApplied = true
+					break
+				}
+			}
+		}
+	}
+	var results []v1.Descriptor
+	if filterApplied {
+		results = index.Manifests
+	} else {
+		results = []v1.Descriptor{}
+		for _, desc := range index.Manifests {
+			if desc.ArtifactType == artifactType {
+				results = append(results, desc)
+			}
+		}
+	}
+
+	b, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(b))
+	panic(fmt.Sprintf("i be panickin, attName: %s", attName))
+
 	img, err := SignedImage(o.TargetRepository.Tag(normalize(h, o.TagPrefix, attName)), o.OriginalOptions...)
 	if err != nil {
 		return nil, err
