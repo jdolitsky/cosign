@@ -154,7 +154,10 @@ func attestations(digestable digestable, o *options) (oci.Signatures, error) {
 // attachment is a shared implementation of the oci.Signed* Attachment method.
 func attachment(digestable digestable, attName string, o *options) (oci.File, error) {
 	if b, err := strconv.ParseBool(env.Getenv(env.VariableOCIExperimental)); err == nil && b {
-		return attachmentExperimentalOCI(digestable, attName, o)
+		if file, err := attachmentExperimentalOCI(digestable, attName, o); err == nil {
+			return file, nil
+		}
+		fmt.Printf("Unable to locate %s attachment using digest tag, trying older scheme\n", attName)
 	}
 
 	h, err := digestable.Digest()
