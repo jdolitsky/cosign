@@ -26,3 +26,10 @@ func EnableExperimental() bool {
 	}
 	return false
 }
+
+func EnableOCIExperimental() bool {
+	if b, err := strconv.ParseBool(env.Getenv(env.VariableOCIExperimental)); err == nil {
+		return b
+	}
+	return false
+}

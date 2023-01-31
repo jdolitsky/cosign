@@ -34,10 +34,45 @@ import (
 	ocistatic "github.com/google/go-containerregistry/pkg/v1/static"
 	ocitypes "github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
+	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
+	"github.com/sigstore/cosign/v2/pkg/oci/static"
 	"github.com/sigstore/cosign/v2/pkg/types"
 )
 
 func SBOMCmd(ctx context.Context, regOpts options.RegistryOptions, sbomRef string, sbomType ocitypes.MediaType, imageRef string) error {
+	if options.EnableOCIExperimental() {
+		return SBOMCmdOCIExperimental(ctx, regOpts, sbomRef, sbomType, imageRef)
+	}
+
+	ref, err := name.ParseReference(imageRef, regOpts.NameOptions()...)
+	if err != nil {
+		return err
+	}
+
+	b, err := sbomBytes(sbomRef)
+	if err != nil {
+		return err
+	}
+
+	remoteOpts, err := regOpts.ClientOpts(ctx)
+	if err != nil {
+		return err
+	}
+
+	dstRef, err := ociremote.SBOMTag(ref, remoteOpts...)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stderr, "Uploading SBOM file for [%s] to [%s] with mediaType [%s].\n", ref.Name(), dstRef.Name(), sbomType)
+	img, err := static.NewFile(b, static.WithLayerMediaType(sbomType))
+	if err != nil {
+		return err
+	}
+	return remote.Write(dstRef, img, regOpts.GetRegistryClientOpts(ctx)...)
+}
+
+func SBOMCmdOCIExperimental(ctx context.Context, regOpts options.RegistryOptions, sbomRef string, sbomType ocitypes.MediaType, imageRef string) error {
 	var dig name.Digest
 	ref, err := name.ParseReference(imageRef, regOpts.NameOptions()...)
 	if err != nil {

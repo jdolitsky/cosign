@@ -158,8 +158,7 @@ func attachment(digestable digestable, attName string, o *options) (oci.File, er
 	d := o.TargetRepository.Digest(h.String())
 
 	artifactType := ArtifactType(attName)
-	filter := map[string]string{types.OCIFilterArtifactType: artifactType}
-	index, err := remote.Referrers(d, remote.WithFilter(filter))
+	index, err := remote.Referrers(d, remote.WithFilter("arifactType", artifactType))
 	if err != nil {
 		return nil, err
 	}
