@@ -36,7 +36,6 @@ import (
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
 	"github.com/sigstore/cosign/v2/pkg/oci/static"
-	"github.com/sigstore/cosign/v2/pkg/types"
 )
 
 func SBOMCmd(ctx context.Context, regOpts options.RegistryOptions, sbomRef string, sbomType ocitypes.MediaType, imageRef string) error {
@@ -88,6 +87,8 @@ func SBOMCmdOCIExperimental(ctx context.Context, regOpts options.RegistryOptions
 		dig = ref.Context().Digest(desc.Digest.String())
 	}
 
+	artifactType := ociremote.ArtifactType("sbom")
+
 	desc, err := remote.Head(dig, regOpts.GetRegistryClientOpts(ctx)...)
 	var terr *transport.Error
 	if errors.As(err, &terr) && terr.StatusCode == http.StatusNotFound {
@@ -98,7 +99,7 @@ func SBOMCmdOCIExperimental(ctx context.Context, regOpts options.RegistryOptions
 		// The subject doesn't exist, attach to it as if it's an empty OCI image.
 		logs.Progress.Println("subject doesn't exist, attaching to empty image")
 		desc = &v1.Descriptor{
-			ArtifactType: types.CosignArtifactSBOMMediaType,
+			ArtifactType: artifactType,
 			MediaType:    ocitypes.OCIManifestSchema1,
 			Size:         0,
 			Digest:       h,
@@ -113,7 +114,7 @@ func SBOMCmdOCIExperimental(ctx context.Context, regOpts options.RegistryOptions
 	}
 
 	empty := mutate.MediaType(
-		mutate.ConfigMediaType(empty.Image, ocitypes.MediaType(types.CosignArtifactSBOMMediaType)),
+		mutate.ConfigMediaType(empty.Image, ocitypes.MediaType(artifactType)),
 		ocitypes.OCIManifestSchema1)
 	att, err := mutate.AppendLayers(empty, ocistatic.NewLayer(b, ocitypes.MediaType(sbomType)))
 	if err != nil {

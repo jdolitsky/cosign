@@ -31,10 +31,3 @@ const (
 	WasmLayerMediaType     = "application/vnd.wasm.content.layer.v1+wasm"
 	WasmConfigMediaType    = "application/vnd.wasm.config.v1+json"
 )
-
-// Related to OCI 1.1+ support
-const (
-	CosignArtifactAttestationMediaType = "application/vnd.dev.cosign.artifact.att.v1+json"
-	CosignArtifactSBOMMediaType        = "application/vnd.dev.cosign.artifact.sbom.v1+json"
-	CosignArtifactSignatureMediaType   = "application/vnd.dev.cosign.artifact.sig.v1+json"
-)
