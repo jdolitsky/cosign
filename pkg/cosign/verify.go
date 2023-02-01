@@ -30,11 +30,13 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/digitorus/timestamp"
 	cbundle "github.com/sigstore/cosign/v2/pkg/cosign/bundle"
+	"github.com/sigstore/cosign/v2/pkg/cosign/env"
 	"github.com/sigstore/sigstore/pkg/tuf"
 
 	"github.com/sigstore/cosign/v2/pkg/blob"
@@ -462,6 +464,10 @@ func (fos *fakeOCISignatures) Get() ([]oci.Signature, error) {
 // VerifyImageSignatures does all the main cosign checks in a loop, returning the verified signatures.
 // If there were no valid signatures, we return an error.
 func VerifyImageSignatures(ctx context.Context, signedImgRef name.Reference, co *CheckOpts) (checkedSignatures []oci.Signature, bundleVerified bool, err error) {
+	if b, err := strconv.ParseBool(env.Getenv(env.VariableOCIExperimental)); err == nil && b {
+		return VerifyImageSignaturesExperimentalOCI(ctx, signedImgRef, co)
+	}
+
 	// Enforce this up front.
 	if co.RootCerts == nil && co.SigVerifier == nil {
 		return nil, false, errors.New("one of verifier or root certs is required")

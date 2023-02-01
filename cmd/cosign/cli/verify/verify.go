@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/google/go-containerregistry/pkg/name"
 
@@ -38,7 +37,6 @@ import (
 	"github.com/sigstore/cosign/v2/internal/pkg/cosign/tsa"
 	"github.com/sigstore/cosign/v2/pkg/blob"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
-	"github.com/sigstore/cosign/v2/pkg/cosign/env"
 	"github.com/sigstore/cosign/v2/pkg/cosign/pivkey"
 	"github.com/sigstore/cosign/v2/pkg/cosign/pkcs11key"
 	"github.com/sigstore/cosign/v2/pkg/oci"
@@ -278,19 +276,9 @@ func (c *VerifyCommand) Exec(ctx context.Context, images []string) (err error) {
 				return fmt.Errorf("resolving attachment type %s for image %s: %w", c.Attachment, img, err)
 			}
 
-			var verified []oci.Signature
-			var bundleVerified bool
-
-			if b, err := strconv.ParseBool(env.Getenv(env.VariableOCIExperimental)); err == nil && b {
-				verified, bundleVerified, err = cosign.VerifyImageSignaturesExperimentalOCI(ctx, ref, co)
-				if err != nil {
-					return err
-				}
-			} else {
-				verified, bundleVerified, err = cosign.VerifyImageSignatures(ctx, ref, co)
-				if err != nil {
-					return err
-				}
+			verified, bundleVerified, err := cosign.VerifyImageSignatures(ctx, ref, co)
+			if err != nil {
+				return err
 			}
 
 			PrintVerificationHeader(ref.Name(), co, bundleVerified, fulcioVerified)
