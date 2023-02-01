@@ -45,6 +45,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sigstore/cosign/v2/pkg/oci/layout"
@@ -1280,4 +1281,58 @@ func correctAnnotations(wanted, have map[string]interface{}) bool {
 		}
 	}
 	return true
+}
+
+// VerifyImageSignaturesExperimentalOCI does all the main cosign checks in a loop, returning the verified signatures.
+// If there were no valid signatures, we return an error, using OCI 1.1+ behavior.
+func VerifyImageSignaturesExperimentalOCI(ctx context.Context, signedImgRef name.Reference, co *CheckOpts) (checkedSignatures []oci.Signature, bundleVerified bool, err error) {
+	// Enforce this up front.
+	if co.RootCerts == nil && co.SigVerifier == nil {
+		return nil, false, errors.New("one of verifier or root certs is required")
+	}
+
+	// This is a carefully optimized sequence for fetching the signatures of the
+	// entity that minimizes registry requests when supplied with a digest input
+	digest, err := ociremote.ResolveDigest(signedImgRef, co.RegistryClientOpts...)
+	if err != nil {
+		return nil, false, err
+	}
+	h, err := v1.NewHash(digest.Identifier())
+	if err != nil {
+		return nil, false, err
+	}
+
+	var sigs oci.Signatures
+	sigRef := co.SignatureRef
+	if sigRef == "" {
+		artifactType := ociremote.ArtifactType("sig")
+		index, err := remote.Referrers(digest, remote.WithFilter("arifactType", artifactType))
+		if err != nil {
+			return nil, false, err
+		}
+		results := index.Manifests
+		numResults := len(results)
+		if numResults == 0 {
+			return nil, false, fmt.Errorf("unable to locate reference with artifactType %s", artifactType)
+		} else if numResults > 1 {
+			// TODO: if there is more than 1 result.. what does that even mean?
+			fmt.Printf("WARNING: there were a total of %d references with artifactType %s\n", numResults, artifactType)
+		}
+		lastResult := results[numResults-1]
+		st, err := name.ParseReference(fmt.Sprintf("%s@%s", digest.Repository, lastResult.Digest.String()))
+		if err != nil {
+			return nil, false, err
+		}
+		sigs, err = ociremote.Signatures(st, co.RegistryClientOpts...)
+		if err != nil {
+			return nil, false, err
+		}
+	} else {
+		sigs, err = loadSignatureFromFile(sigRef, signedImgRef, co)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+
+	return verifySignatures(ctx, sigs, h, co)
 }
