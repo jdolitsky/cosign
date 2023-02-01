@@ -127,7 +127,8 @@ func SBOMCmdOCIExperimental(ctx context.Context, regOpts options.RegistryOptions
 	}
 	dstRef := ref.Context().Digest(attdig.String())
 
-	fmt.Fprintf(os.Stderr, "Uploading SBOM file for [%s] to [%s] with mediaType [%s].\n", ref.Name(), dstRef.Name(), sbomType)
+	fmt.Fprintf(os.Stderr, "Uploading SBOM file for [%s] to [%s] with config.mediaType [%s] layers[0].mediaType [%s].\n",
+		ref.Name(), dstRef.String(), artifactType, sbomType)
 	return remote.Write(dstRef, att, regOpts.GetRegistryClientOpts(ctx)...)
 }
 
