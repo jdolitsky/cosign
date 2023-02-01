@@ -41,6 +41,7 @@ import (
 	ipayload "github.com/sigstore/cosign/v2/internal/pkg/cosign/payload"
 	irekor "github.com/sigstore/cosign/v2/internal/pkg/cosign/rekor"
 	"github.com/sigstore/cosign/v2/internal/pkg/cosign/tsa"
+	ociexperimental "github.com/sigstore/cosign/v2/internal/pkg/oci/remote"
 	"github.com/sigstore/cosign/v2/internal/ui"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/cosign/v2/pkg/cosign/env"
@@ -315,7 +316,7 @@ func signDigest(ctx context.Context, digest name.Digest, payload []byte, ko opti
 
 	// Publish the signatures associated with this entity (using OCI 1.1+ behavior)
 	if b, err := strconv.ParseBool(env.Getenv(env.VariableOCIExperimental)); err == nil && b {
-		return ociremote.WriteSignaturesExperimentalOCI(digest, newSE, walkOpts...)
+		return ociexperimental.WriteSignaturesExperimentalOCI(digest, newSE) // TODO , walkOpts...)
 	}
 
 	// Publish the signatures associated with this entity
