@@ -313,10 +313,9 @@ func signDigest(ctx context.Context, digest name.Digest, payload []byte, ko opti
 		ui.Infof(ctx, "Pushing signature to: %s", repo.RepositoryStr())
 	}
 
+	// Publish the signatures associated with this entity (using OCI 1.1+ behavior)
 	if b, err := strconv.ParseBool(env.Getenv(env.VariableOCIExperimental)); err == nil && b {
-		if err := ociremote.WriteSignaturesExperimentalOCI(digest, newSE, walkOpts...); err != nil {
-			return err
-		}
+		return ociremote.WriteSignaturesExperimentalOCI(digest, newSE, walkOpts...)
 	}
 
 	// Publish the signatures associated with this entity

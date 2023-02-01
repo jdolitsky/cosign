@@ -175,7 +175,18 @@ func WriteSignaturesExperimentalOCI(d name.Digest, se oci.SignedEntity, opts ...
 	}
 	fmt.Fprintf(os.Stderr, "Uploading signature for [%s] to [%s] with config.mediaType [%s] layers[0].mediaType [%s].\n",
 		d.String(), targetRef.String(), artifactType, ctypes.SimpleSigningMediaType)
+	return remote.Put(targetRef, &taggableManifest{raw: b, mediaType: m.MediaType}, o.ROpt...)
+}
 
-	// TODO: write to registry
-	return nil
+type taggableManifest struct {
+	raw       []byte
+	mediaType types.MediaType
+}
+
+func (taggable taggableManifest) RawManifest() ([]byte, error) {
+	return taggable.raw, nil
+}
+
+func (taggable taggableManifest) MediaType() (types.MediaType, error) {
+	return taggable.mediaType, nil
 }
