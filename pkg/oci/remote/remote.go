@@ -217,7 +217,7 @@ func attachmentExperimentalOCI(digestable digestable, attName string, o *options
 	d := o.TargetRepository.Digest(h.String())
 
 	artifactType := ArtifactType(attName)
-	index, err := remote.Referrers(d, remote.WithFilter("arifactType", artifactType))
+	index, err := Referrers(d, artifactType, o.OriginalOptions...)
 	if err != nil {
 		return nil, err
 	}

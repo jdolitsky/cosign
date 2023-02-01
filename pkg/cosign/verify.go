@@ -47,7 +47,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sigstore/cosign/v2/pkg/oci/layout"
@@ -1316,7 +1315,7 @@ func VerifyImageSignaturesExperimentalOCI(ctx context.Context, signedImgRef name
 	sigRef := co.SignatureRef
 	if sigRef == "" {
 		artifactType := ociremote.ArtifactType("sig")
-		index, err := remote.Referrers(digest, remote.WithFilter("arifactType", artifactType))
+		index, err := ociremote.Referrers(digest, artifactType, co.RegistryClientOpts...)
 		if err != nil {
 			return nil, false, err
 		}
