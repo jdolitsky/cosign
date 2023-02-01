@@ -150,6 +150,19 @@ func WriteSignaturesExperimentalOCI(d name.Digest, se oci.SignedEntity, opts ...
 	if err != nil {
 		return err
 	}
+
+	// Write the signature blobs
+	s, err := sigs.Get()
+	if err != nil {
+		return err
+	}
+	for _, v := range s {
+		if err := remote.WriteLayer(d.Repository, v, o.ROpt...); err != nil {
+			return err
+		}
+	}
+
+	// Write the manifest containing a subject
 	b, err := sigs.RawManifest()
 	if err != nil {
 		return err
