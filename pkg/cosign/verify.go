@@ -465,7 +465,11 @@ func (fos *fakeOCISignatures) Get() ([]oci.Signature, error) {
 // If there were no valid signatures, we return an error.
 func VerifyImageSignatures(ctx context.Context, signedImgRef name.Reference, co *CheckOpts) (checkedSignatures []oci.Signature, bundleVerified bool, err error) {
 	if b, err := strconv.ParseBool(env.Getenv(env.VariableOCIExperimental)); err == nil && b {
-		return VerifyImageSignaturesExperimentalOCI(ctx, signedImgRef, co)
+		verified, bundleVerified, err := VerifyImageSignaturesExperimentalOCI(ctx, signedImgRef, co)
+		if err == nil {
+			return verified, bundleVerified, nil
+		}
+		fmt.Println("Unable to locate sig attachment using digest tag, trying older scheme")
 	}
 
 	// Enforce this up front.
